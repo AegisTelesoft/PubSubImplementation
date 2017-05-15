@@ -9,6 +9,6 @@
 class Publisher
 {
 public:
-    void Publish(std::string topicTag, rapidjson::Document body);
+    void Publish(std::string topicTag, rapidjson::Document& body);
 
 };

@@ -7,9 +7,11 @@ TestSub::TestSub()
 
 }
 
-void TestSub::OnReceive(std::string topicTag, const rapidjson::Document body)
+void TestSub::OnReceive(std::string topicTag, rapidjson::Document& body)
 {
-    std::cout<< "Hey" << std::endl;
+    //int shit = body["iteration"].GetInt();
+
+    std::cout<< "hey" << std::endl;
 }
 
 TestSub::~TestSub()

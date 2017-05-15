@@ -9,5 +9,5 @@
 class ISubscriber
 {
 public:
-    virtual void OnReceive(std::string topicTag, const rapidjson::Document body) = 0;
+    virtual void OnReceive(std::string topicTag, rapidjson::Document& body) = 0;
 };

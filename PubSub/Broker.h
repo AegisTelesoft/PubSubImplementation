@@ -20,7 +20,7 @@ namespace PubSub
     class Broker
     {
     public:
-        static void EnqueueMessage(std::string topicTag, rapidjson::Document body);
+        static void EnqueueMessage(std::string topicTag, const rapidjson::Document& body);
         static void AddSubscription(ISubscriber *subscriber, std::string topicTag);
 
     private:

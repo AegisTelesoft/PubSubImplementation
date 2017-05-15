@@ -15,9 +15,6 @@ using namespace rapidjson;
 
 int main() {
 
-    const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
-    Document d;
-    d.Parse(json);
 
     TestSub* sub1Ptr;
     TestSub sub1;
@@ -32,11 +29,13 @@ int main() {
 
     TestPub pub1;
 
-    for(int i = 0; i < 100; i++)
+    for(int i = 0; i < 10000; i++)
     {
-        rapidjson::Document aCopy;
-        aCopy.CopyFrom(d, d.GetAllocator());
-        pub1.Publish("tag2", std::move(aCopy));
+        std::string jsonString("{\"iteration\": %d}", i);
+        Document d;
+        d.Parse(jsonString.c_str());
+
+        pub1.Publish("tag2", d);
     }
 
     system("pause");
