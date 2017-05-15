@@ -1,24 +1,42 @@
 #include "Topic.h"
 
-namespace PubSub {
-
-    Topic::Topic(std::string tag) : m_topicTag(tag) {
-
-    }
-
-    Topic::~Topic() {
+namespace PubSub
+{
+    Topic::Topic(std::string tag) : m_tag(tag), m_subCount(0)
+    {
 
     }
 
-    std::string Topic::GetTopicTag() {
-        return m_topicTag;
+    Topic::~Topic()
+    {
+
     }
 
-    void Topic::AddSubscription(std::function<void(std::string)> subscription) {
-        m_subscriptions.push_back(subscription);
+    std::string Topic::GetTag()
+    {
+        return m_tag;
     }
 
-    std::vector<std::function<void(std::string)>> &Topic::GetSubscriptions() {
-        return m_subscriptions;
+    void Topic::AddSubscriber(ISubscriber* subscriber)
+    {
+        std::unique_lock<std::mutex> addSubLock(m_Subs);
+        m_subscribers.push_back(std::move(subscriber));
+        addSubLock.unlock();
+
+        std::unique_lock<std::mutex> incCountLock(m_count);
+        m_subCount++;
+        incCountLock.unlock();
+    }
+
+    unsigned Topic::GetSubCount()
+    {
+        std::unique_lock<std::mutex> lock(m_count);
+        return m_subCount;
+    }
+
+    std::vector<ISubscriber*>& Topic::GetSubscribers()
+    {
+        std::unique_lock<std::mutex> lock(m_Subs);
+        return m_subscribers;
     }
 }

@@ -1,34 +1,43 @@
 #include <iostream>
 
-#include "Publisher.h"
-#include "Subscriber.h"
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+
+
+#include "TestPub.h"
+#include "TestSub.h"
+#include "Broker.h"
+
+
+using namespace rapidjson;
+
 
 int main() {
 
-    Subscriber s1;
-    s1.Subscribe("tag1",[](std::string data)
+    const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
+    Document d;
+    d.Parse(json);
+
+    TestSub* sub1Ptr;
+    TestSub sub1;
+    sub1Ptr = &sub1;
+
+    TestSub* sub2Ptr;
+    TestSub sub2;
+    sub2Ptr = &sub2;
+
+    PubSub::Broker::AddSubscription(sub1Ptr, "tag1");
+    PubSub::Broker::AddSubscription(sub2Ptr, "tag2");
+
+    TestPub pub1;
+
+    for(int i = 0; i < 100; i++)
     {
-        std::cout << "s1: " << data << std::endl;
-    });
-
-    Subscriber s2;
-    s2.Subscribe("tag2",[](std::string data)
-    {
-        std::cout << "s2: " << data << std::endl;
-    });
-
-    Subscriber s3;
-    s2.Subscribe("tag2",[](std::string data)
-    {
-        std::cout << "s3: " << data << std::endl;
-    });
-
-
-    Publisher p1;
-
-    p1.Publish("tag3", "S3, you are adopted");
-    p1.Publish("tag2", "Hello to S2 and S3");
-    p1.Publish("tag1", "Don't worry S1, we still love you");
+        rapidjson::Document aCopy;
+        aCopy.CopyFrom(d, d.GetAllocator());
+        pub1.Publish("tag2", std::move(aCopy));
+    }
 
     system("pause");
 

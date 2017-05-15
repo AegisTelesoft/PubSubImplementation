@@ -2,23 +2,32 @@
 
 #include <string>
 #include <vector>
-#include <functional>
+#include <memory>
+#include <mutex>
 
-namespace PubSub {
+#include "ISubscriber.h"
 
-    class Topic {
-
+namespace PubSub
+{
+    class Topic
+    {
     public:
         Topic(std::string tag);
         ~Topic();
 
     public:
-        std::string GetTopicTag();
-        void AddSubscription(std::function<void(std::string)> subscription);
-        std::vector<std::function<void(std::string)>> &GetSubscriptions();
+        void AddSubscriber(ISubscriber* subscriber);
+        std::vector<ISubscriber*>& GetSubscribers();
+        unsigned GetSubCount();
+        std::string GetTag();
 
     private:
-        std::string m_topicTag;
-        std::vector<std::function<void(std::string)>> m_subscriptions;
+        std::vector<ISubscriber*> m_subscribers;
+        unsigned m_subCount;
+        std::string m_tag;
+        std::mutex m_count;
+        std::mutex m_Subs;
+
     };
 }
+

@@ -1,17 +1,9 @@
 #include "Publisher.h"
-#include "Topics.h"
+#include "Broker.h"
 
-Publisher::Publisher()
+void Publisher::Publish(std::string topicTag, rapidjson::Document body)
 {
-
-}
-
-Publisher::~Publisher()
-{
-
-}
-
-void Publisher::Publish(std::string topicTag, std::string data)
-{
-    PubSub::Topics::Post(topicTag, data);
+    rapidjson::Document aCopy;
+    aCopy.CopyFrom(body, body.GetAllocator());
+    PubSub::Broker::EnqueueMessage(topicTag, std::move(aCopy));
 }

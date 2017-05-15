@@ -6,9 +6,8 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
-class Publisher
+class ISubscriber
 {
 public:
-    void Publish(std::string topicTag, rapidjson::Document body);
-
+    virtual void OnReceive(std::string topicTag, const rapidjson::Document body) = 0;
 };
