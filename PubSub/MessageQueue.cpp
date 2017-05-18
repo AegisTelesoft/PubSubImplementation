@@ -1,19 +1,19 @@
-#include "TaskQueue.h"
+#include "MessageQueue.h"
 
 namespace PubSub
 {
 
-    TaskQueue::TaskQueue() : m_head(0), m_tail(0)
+    MessageQueue::MessageQueue() : m_head(0), m_tail(0)
     {
 
     }
 
-    TaskQueue::~TaskQueue()
+    MessageQueue::~MessageQueue()
     {
 
     }
 
-    void TaskQueue::Push(std::function<void()> task)
+    void MessageQueue::Push(std::function<void()> task)
     {
         std::unique_lock<std::mutex> lock(m_headMutex);
 
@@ -24,7 +24,7 @@ namespace PubSub
         m_buffer[m_head] = std::move(task);
     }
 
-    std::function<void()> TaskQueue::Pop()
+    std::function<void()> MessageQueue::Pop()
     {
         std::unique_lock<std::mutex> lock(m_tailMutex);
 
@@ -43,7 +43,7 @@ namespace PubSub
             return std::move(m_buffer[m_tail]);
     }
 
-    int TaskQueue::Size()
+    int MessageQueue::Size()
     {
         int size = 0;
 

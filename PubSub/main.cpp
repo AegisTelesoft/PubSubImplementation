@@ -34,9 +34,9 @@ int main() {
 
     std::vector<std::thread> spammers;
 
-    system("pause");
+    //system("pause");
 
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < 3; i++)
     {
         spammers.push_back(std::thread([&pub1]()
         {

@@ -26,7 +26,7 @@ namespace PubSub
         unsigned m_subCount;
         std::string m_tag;
         std::mutex m_count;
-        std::mutex m_Subs;
+        std::mutex m_subs;
 
     };
 }

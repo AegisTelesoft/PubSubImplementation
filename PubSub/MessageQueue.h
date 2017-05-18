@@ -9,11 +9,11 @@
 
 namespace PubSub {
 
-    class TaskQueue {
+    class MessageQueue {
     public:
-        TaskQueue();
+        MessageQueue();
 
-        ~TaskQueue();
+        ~MessageQueue();
 
     public:
         void Push(std::function<void()> task);
