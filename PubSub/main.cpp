@@ -1,4 +1,7 @@
 #include <iostream>
+#include <vector>
+#include <chrono>
+#include <thread>
 
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
@@ -29,13 +32,35 @@ int main() {
 
     TestPub pub1;
 
-    for(int i = 0; i < 10000; i++)
-    {
-        std::string jsonString("{\"iteration\": %d}", i);
-        Document d;
-        d.Parse(jsonString.c_str());
+    std::vector<std::thread> spammers;
 
-        pub1.Publish("tag2", d);
+    system("pause");
+
+    for(int i = 0; i < 10; i++)
+    {
+        spammers.push_back(std::thread([&pub1]()
+        {
+            const char* json = "{\"start_time\":0}";
+
+            Document d;
+            d.Parse(json);
+
+            for(int i = 0; i < 1000; i++)
+            {
+                auto now = std::chrono::system_clock::now();
+                auto msNow = std::chrono::time_point_cast<std::chrono::milliseconds>(now).time_since_epoch();
+
+                Value& s = d["start_time"];
+                s.SetInt64(msNow.count());
+
+                pub1.Publish("tag2", d);
+            }
+        }));
+    }
+
+    for(int i = 0; i < spammers.size(); i++)
+    {
+        spammers[i].join();
     }
 
     system("pause");

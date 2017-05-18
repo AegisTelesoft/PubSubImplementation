@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <chrono>
-
 namespace PubSub
 {
     ThreadPool::ThreadPool(unsigned threads) : m_stop(false)
@@ -14,20 +12,25 @@ namespace PubSub
                 for(;;)
                 {
                     std::function<void()> task;
+
                     {
-                        std::unique_lock<std::mutex> lock(this->m_quequeMutex);
+                        std::unique_lock<std::mutex> lock(this->m_stopMutex);
+
                         this->m_condition.wait(lock, [this] {
-                            return this->m_stop || !this->m_tasks.empty();
+                            return this->m_stop || this->m_tasks.Size() > 0;
                         });
 
-                        if (this->m_stop && this->m_tasks.empty())
+                        if (this->m_stop)
                             return;
-
-                        task = std::move(this->m_tasks.front());
-                        this->m_tasks.pop();
                     }
 
-                    task();
+                    task = std::move(this->m_tasks.Pop());
+
+                    if(task != nullptr)
+                        task();
+
+                    std::cout << this->m_tasks.Size() << std::endl;
+
                 }
             });
         }
@@ -35,23 +38,23 @@ namespace PubSub
 
     void ThreadPool::Enqueque(std::function<void()> task)
     {
-        std::unique_lock<std::mutex> lock(this->m_quequeMutex);
-
+        std::unique_lock<std::mutex> stopLock(this->m_stopMutex);
         if(!m_stop)
         {
-            this->m_tasks.emplace(task);
+            stopLock.unlock();
+
+            m_tasks.Push(std::move(task));
+
             m_condition.notify_one();
         }
-        lock.unlock();
     }
 
     ThreadPool::~ThreadPool()
     {
-        std::unique_lock<std::mutex> lock(this->m_quequeMutex);
+        std::unique_lock<std::mutex> stopLock(this->m_stopMutex);
         m_stop = true;
-        lock.unlock();
+        stopLock.unlock();
 
-        std::cout << "cyaaaaaaaaaa" << std::endl;
         m_condition.notify_all();
 
         for(int i = 0; i < m_workers.size(); i++)

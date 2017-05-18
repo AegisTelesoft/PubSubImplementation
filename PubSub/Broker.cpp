@@ -20,18 +20,19 @@ namespace PubSub
         body.Accept(writer);
         std::string jsonData(buffer.GetString());
 
-        instance->m_threadPool.Enqueque([instance, topicTag, jsonData](){
+        instance->m_threadPool.Enqueque(std::move([instance, topicTag, jsonData](){
 
             std::unique_lock<std::mutex> lock(instance->m_mutex);
 
             topicHashmap::const_iterator topic = instance->m_topicHashmap.find(topicTag);
 			 
-            if(topic != instance->m_topicHashmap.end())
+            if (topic != instance->m_topicHashmap.end())
             {
                 for (unsigned i = 0; i < topic->second->GetSubCount(); i++)
                 {
-                    if (topic->second->GetSubscribers()[i] != NULL)
+                    if (topic->second->GetSubscribers()[i] != nullptr)
                     {
+                        //lock.unlock();
                         rapidjson::Document doc;
                         doc.Parse(jsonData.c_str());
 
@@ -39,8 +40,7 @@ namespace PubSub
                     }
                 }
             }
-            lock.unlock();
-        });
+        }));
     }
 
     void Broker::AddSubscription(ISubscriber *subscriber, std::string topicTag)
@@ -48,7 +48,7 @@ namespace PubSub
         Broker * instance = Broker::getInstance();
 
 
-        instance->m_threadPool.Enqueque([instance, topicTag, subscriber](){
+        instance->m_threadPool.Enqueque(std::move([instance, topicTag, subscriber](){
 
             std::unique_lock<std::mutex> lock(instance->m_mutex);
 
@@ -65,7 +65,7 @@ namespace PubSub
                 instance->m_topicHashmap.emplace(topicTag, newTopic);
             }
 
-        });
+        }));
     }
 
     Broker* Broker::getInstance()
@@ -78,7 +78,7 @@ namespace PubSub
         return m_instance;
     }
 
-    Broker::Broker() : m_threadPool(10)
+    Broker::Broker() : m_threadPool(50)
     {
 
     }

@@ -6,6 +6,8 @@
 #include <mutex>
 #include <condition_variable>
 
+#include "TaskQueue.h"
+
 namespace PubSub
 {
     class ThreadPool
@@ -18,10 +20,11 @@ namespace PubSub
 
     private:
         std::vector<std::thread> m_workers;
-        std::queue<std::function<void()>> m_tasks;
+        TaskQueue m_tasks;
 
         std::condition_variable m_condition;
-        std::mutex m_quequeMutex;
+        std::mutex m_conditionMutex;
+        std::mutex m_stopMutex;
         bool m_stop;
     };
 }
