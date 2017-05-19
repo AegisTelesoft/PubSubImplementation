@@ -1,25 +1,24 @@
 #pragma once
 
-#include <vector>
 #include <string>
-#include <unordered_map>
+#include <vector>
+#include <thread>
 #include <mutex>
 #include <queue>
-#include <thread>
+#include <unordered_map>
 #include <condition_variable>
 
-#include "Topic.h"
 #include "ISubscriber.h"
-#include "TaskPool.h"
+#include "Topic.h"
+#include "CancelationToken.h"
 
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
+
 namespace PubSub
 {
-    typedef std::unordered_map<std::string, Topic*> topicHashmap;
-
     class Broker
     {
     public:
@@ -28,20 +27,24 @@ namespace PubSub
 
     private:
         static Broker* getInstance();
-        static void masterTask();
         Broker();
         ~Broker();
 
     private:
-        topicHashmap m_topicHashmap;
         static Broker* m_instance;
-        TaskPool m_taskPool;
-        std::mutex m_mutex;
-        std::mutex m_queueMutex;
 
+        // Topic members
+        std::mutex m_topicMutex;
+        std::unordered_map<std::string, PubSub::Topic> m_topics;
+
+        //MessageQueue members
+        std::mutex m_queueMutex;
         std::queue<std::pair<std::string, std::string>> m_messageQueue;
-        std::thread m_masterThread;
+
+        //Tread pool members
+        std::vector<std::thread> m_dispatchers;
         std::condition_variable m_condition;
-        bool m_stop;
+        CancelationToken m_cancelationToken;
     };
 }
+

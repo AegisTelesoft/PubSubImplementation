@@ -1,68 +1,98 @@
 #include "Broker.h"
 
-#include <functional>
-#include <iostream>
-#include <string>
-
-#include "Topic.h"
-
 namespace PubSub
 {
     Broker* Broker::m_instance = nullptr;
 
-    void Broker::masterTask()
+    class ThreadData
     {
-        Broker * instance = Broker::getInstance();
+    public:
+        ThreadData(std::queue<std::pair<std::string, std::string>>& messageQueue,
+                   std::mutex& queueMutex, std::unordered_map<std::string, Topic>& topics,
+                   std::mutex& topicMutex, std::condition_variable& condition,
+                   CancelationToken& token
+        );
 
-        while(!instance->m_stop)
+    public:
+        // Message queue refs
+        std::queue<std::pair<std::string, std::string>>& MessageQueue;
+        std::mutex& QueueMutex;
+
+        // Topic refs
+        std::unordered_map<std::string, Topic>& Topics;
+        std::mutex& TopicMutex;
+
+        // thread conditioning refs
+        std::condition_variable& Condition;
+        CancelationToken& Token;
+    };
+
+    void dispatcher_task(ThreadData data)
+    {
+        while(true)
         {
             std::pair<std::string, std::string> message;
-
             {
-                std::unique_lock<std::mutex> lock(instance->m_queueMutex);
+                std::unique_lock<std::mutex> lock(data.QueueMutex);
 
-                instance->m_condition.wait(lock, [instance] {
-                    return !instance->m_messageQueue.empty();
+                data.Condition.wait(lock, [data] {
+                    return data.Token.IsCanceled() || !data.MessageQueue.empty();
                 });
+
+                if (data.Token.IsCanceled() && data.MessageQueue.empty())
+                    return;
+
+                message = data.MessageQueue.front();
+                data.MessageQueue.pop();
             }
 
-            std::unique_lock<std::mutex> lock(instance->m_mutex);
 
-            if (instance->m_stop)
-                return;
-
+            std::unique_lock<std::mutex> lock(data.TopicMutex);
+            auto topic = data.Topics.find(message.first);
             lock.unlock();
 
-            std::unique_lock<std::mutex> queueLock(instance->m_queueMutex);
-
-            message = std::move(instance->m_messageQueue.front());
-            instance->m_messageQueue.pop();
-            queueLock.unlock();
-
-            std::unique_lock<std::mutex> topicLock(instance->m_mutex);
-            topicHashmap::const_iterator topic = instance->m_topicHashmap.find(message.first);
-
-            if (topic != instance->m_topicHashmap.end())
+            if (topic !=  data.Topics.end())
             {
-                for (unsigned i = 0; i < topic->second->GetSubCount(); i++)
+                for (unsigned i = 0; i < topic->second.GetSubCount(); i++)
                 {
-                    if (topic->second->GetSubscribers()[i] != nullptr)
+                    if (topic->second.GetSubscribers()[i] != nullptr)
                     {
+                        rapidjson::Document doc;
+                        doc.Parse(message.second.c_str());
 
-                        instance->m_taskPool.Enqueue([&topic, i, message]() {
-                            rapidjson::Document doc;
-                            doc.Parse(message.second.c_str());
-
-                            topic->second->GetSubscribers()[i]->OnReceive(message.first, doc);
-                        });
+                        topic->second.GetSubscribers()[i]->OnReceive(message.first, doc);
                     }
                 }
             }
-            //topicLock.unlock();
         }
     }
 
-    void Broker::EnqueueMessage(std::string topicTag, const rapidjson::Document& body)
+    void Broker::AddSubscription(ISubscriber *subscriber, std::string topicTag)
+    {
+        Broker * instance = Broker::getInstance();
+
+        std::unique_lock<std::mutex> topicLock(instance->m_topicMutex);
+        auto topic = instance->m_topics.find(topicTag);
+
+        if(topic != instance->m_topics.end())
+        {
+            topicLock.unlock();
+            topic->second.AddSubscriber(std::move(subscriber));
+        }
+        else
+        {
+            topicLock.unlock();
+
+            Topic newTopic(topicTag);
+            newTopic.AddSubscriber(std::move(subscriber));
+
+            topicLock.lock();
+            instance->m_topics.insert(std::make_pair(topicTag, newTopic));
+            topicLock.unlock();
+        }
+    }
+
+    void Broker::EnqueueMessage(std::string topicTag, const rapidjson::Document &body)
     {
         Broker * instance = Broker::getInstance();
 
@@ -71,65 +101,45 @@ namespace PubSub
         body.Accept(writer);
         std::string jsonData(buffer.GetString());
 
-        instance->m_taskPool.Enqueue(std::move([instance, topicTag, jsonData]() {
-
-            std::unique_lock<std::mutex> lock(instance->m_queueMutex);
-            instance->m_messageQueue.push(std::move(std::make_pair(std::move(topicTag), std::move(jsonData))));
-            lock.unlock();
-
-        }));
+        std::unique_lock<std::mutex> queueLock(instance->m_queueMutex);
+        instance->m_messageQueue.push(std::move(std::make_pair(std::move(topicTag), std::move(jsonData))));
+        queueLock.unlock();
 
         instance->m_condition.notify_one();
     }
 
-    void Broker::AddSubscription(ISubscriber *subscriber, std::string topicTag)
+    Broker *Broker::getInstance()
     {
-        Broker * instance = Broker::getInstance();
-
-        instance->m_taskPool.Enqueue(std::move([instance, topicTag, subscriber]() {
-
-            topicHashmap::const_iterator topic = instance->m_topicHashmap.find(topicTag);
-
-            if (topic != instance->m_topicHashmap.end()) {
-                std::unique_lock<std::mutex> lock(instance->m_mutex);
-                topic->second->AddSubscriber(std::move(subscriber));
-                lock.unlock();
-            } else {
-                Topic *newTopic = new Topic(topicTag);
-                newTopic->AddSubscriber(std::move(subscriber));
-                std::unique_lock<std::mutex> lock(instance->m_mutex);
-                instance->m_topicHashmap.emplace(topicTag, newTopic);
-                lock.unlock();
-            }
-
-        }));
-    }
-
-    Broker* Broker::getInstance()
-    {
-        if(!m_instance)
-        {
+        if (!m_instance) {
             m_instance = new Broker();
         }
         return m_instance;
     }
 
-    Broker::Broker() : m_taskPool(50), m_stop(false)
+    Broker::Broker()
     {
-        m_masterThread = std::thread(masterTask);
+        ThreadData data(m_messageQueue,m_queueMutex, m_topics, m_topicMutex, m_condition, m_cancelationToken);
+
+        for(int i = 0; i < 1000; i++)
+            m_dispatchers.push_back(std::thread(dispatcher_task, data));
     }
 
     Broker::~Broker()
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_stop = true;
-        lock.unlock();
-
+        m_cancelationToken.Cancel();
         m_condition.notify_all();
 
-        m_masterThread.join();
+        for(int i = 0; i < m_dispatchers.size(); i++)
+            m_dispatchers[i].join();
+    }
 
-        for (auto it : m_topicHashmap)
-            delete it.second;
+    ThreadData::ThreadData(std::queue<std::pair<std::string, std::string>>& messageQueue,
+                           std::mutex& queueMutex, std::unordered_map<std::string, Topic>& topics,
+                           std::mutex& topicMutex, std::condition_variable& condition,
+                           CancelationToken& token)
+    : Token(token), MessageQueue(messageQueue), QueueMutex(queueMutex),
+          Topics(topics), TopicMutex(topicMutex), Condition(condition)
+    {
+
     }
 }

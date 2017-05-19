@@ -7,14 +7,16 @@ namespace PubSub
 
     }
 
+    Topic::Topic(const Topic &obj)
+    {
+        m_tag = obj.m_tag;
+        m_subCount = obj.m_subCount;
+        m_subscribers = obj.m_subscribers;
+    }
+
     Topic::~Topic()
     {
 
-    }
-
-    std::string Topic::GetTag()
-    {
-        return m_tag;
     }
 
     void Topic::AddSubscriber(ISubscriber* subscriber)
