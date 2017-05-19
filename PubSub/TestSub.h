@@ -2,6 +2,8 @@
 
 #include "ISubscriber.h"
 
+#include <mutex>
+
 class TestSub : public virtual ISubscriber
 {
 public:
@@ -9,5 +11,9 @@ public:
     ~TestSub();
 
     void OnReceive(std::string topicTag, rapidjson::Document& body);
+
+    std::mutex m;
+    int i;
+
 
 };

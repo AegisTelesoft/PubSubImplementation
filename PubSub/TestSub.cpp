@@ -3,7 +3,7 @@
 #include <iostream>
 #include <chrono>
 
-TestSub::TestSub()
+TestSub::TestSub() : i(0)
 {
 
 }
@@ -17,8 +17,13 @@ void TestSub::OnReceive(std::string topicTag, rapidjson::Document& body)
 
     long long int diff = msNow.count() - msStart;
 
-    //std::cout << diff << std::endl;
+    std::cout << diff << std::endl;
 
+
+    /*std::unique_lock<std::mutex> lock(m);
+    i++;
+    std::cout << i << std::endl;
+    lock.unlock();*/
 }
 
 TestSub::~TestSub()

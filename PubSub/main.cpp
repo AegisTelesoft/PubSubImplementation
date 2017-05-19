@@ -27,35 +27,39 @@ int main() {
     TestSub sub2;
     sub2Ptr = &sub2;
 
-    PubSub::Broker::AddSubscription(sub1Ptr, "tag1");
-    PubSub::Broker::AddSubscription(sub2Ptr, "tag2");
+    PubSub::Broker::AddSubscription(sub1Ptr, "tag2");
+    //sPubSub::Broker::AddSubscription(sub2Ptr, "tag2");
 
     TestPub pub1;
 
     std::vector<std::thread> spammers;
 
-    system("pause");
+    //system("pause");
 
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < 1; i++)
     {
-        spammers.push_back(std::thread([&pub1]()
+        //spammers.push_back(std::thread([&pub1]()
+        //{
+        const char* json = "{\"start_time\":0}";
+
+        Document d;
+        d.Parse(json);
+
+        for(int i = 0; i < 10000; i++)
         {
-            const char* json = "{\"start_time\":0}";
-
-            Document d;
-            d.Parse(json);
-
-            for(int i = 0; i < 1000; i++)
-            {
-                auto now = std::chrono::system_clock::now();
-                auto msNow = std::chrono::time_point_cast<std::chrono::milliseconds>(now).time_since_epoch();
-
-                Value& s = d["start_time"];
-                s.SetInt64(msNow.count());
-
-                pub1.Publish("tag2", d);
+            if(i % 100 == 0) {
+                //std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-        }));
+
+            auto now = std::chrono::system_clock::now();
+            auto msNow = std::chrono::time_point_cast<std::chrono::milliseconds>(now).time_since_epoch();
+
+            Value& s = d["start_time"];
+            s.SetInt64(msNow.count());
+
+            pub1.Publish("tag2", d);
+        }
+        //}));
     }
 
     for(int i = 0; i < spammers.size(); i++)
