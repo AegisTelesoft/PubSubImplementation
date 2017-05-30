@@ -3,8 +3,15 @@ project(PubSub)
 
 set(CMAKE_CXX_STANDARD 14)
 
-include_directories("${CMAKE_SOURCE_DIR}/rapidjson/include")
+include_directories(
+    "${CMAKE_SOURCE_DIR}/rapidjson/include"
+    "${CMAKE_SOURCE_DIR}/protobuf/include"
+)
 
-set(SOURCE_FILES main.cpp Broker.cpp ISubscriber.h Topic.cpp Topic.h CancelationToken.cpp TestPub.cpp TestSub.cpp Publisher.cpp)
+link_directories(${CMAKE_SOURCE_DIR}/protobuf/lib/)
+
+set(SOURCE_FILES main.cpp Broker.cpp ISubscriber.h Topic.cpp Topic.h CancelationToken.cpp NetPublisher.cpp NetSubscriber.cpp Publisher.cpp SocketServer.cpp Algorithm.cpp Message.pb.cc)
 
 add_executable(PubSub ${SOURCE_FILES})
+
+target_link_libraries(PubSub libprotobufd)

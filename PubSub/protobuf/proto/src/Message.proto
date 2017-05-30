@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package PubSubMessage;
+
+enum MessageType {
+    SUBSCRIBE = 0;
+    PUBLISH = 1;
+    DATA = 2;
+  }
+
+message Message {
+    MessageType type = 1;
+    string topic = 2;
+    string jsonBody = 3;
+}

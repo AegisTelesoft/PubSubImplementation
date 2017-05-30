@@ -7,7 +7,7 @@ namespace PubSub
     class ThreadData
     {
     public:
-        ThreadData(std::queue<std::pair<std::string, std::string>>& messageQueue,
+        ThreadData(message_queue& messageQueue,
                    std::mutex& queueMutex, std::unordered_map<std::string, Topic>& topics,
                    std::mutex& topicMutex, std::condition_variable& condition,
                    CancelationToken& token
@@ -51,25 +51,23 @@ namespace PubSub
             auto topic = data.Topics.find(message.first);
             lock.unlock();
 
-            if (topic !=  data.Topics.end())
-            {
-                for (unsigned i = 0; i < topic->second.GetSubCount(); i++)
-                {
-                    if (topic->second.GetSubscribers()[i] != nullptr)
-                    {
-                        rapidjson::Document doc;
-                        doc.Parse(message.second.c_str());
+            if (topic ==  data.Topics.end())
+                return;
 
-                        topic->second.GetSubscribers()[i]->OnReceive(message.first, doc);
-                    }
-                }
+            for (unsigned i = 0; i < topic->second.GetSubCount(); i++)
+            {
+
+                rapidjson::Document doc;
+                doc.Parse(message.second.c_str());
+
+                topic->second.GetSubscribers()[i]->OnReceive(message.first, doc);
             }
         }
     }
 
-    void Broker::AddSubscription(ISubscriber *subscriber, std::string topicTag)
+    void Broker::AddSubscription(ISubscriber& subscriber, std::string topicTag)
     {
-        Broker * instance = Broker::getInstance();
+        Broker* instance = Broker::getInstance();
 
         std::unique_lock<std::mutex> topicLock(instance->m_topicMutex);
         auto topic = instance->m_topics.find(topicTag);
@@ -77,14 +75,14 @@ namespace PubSub
         if(topic != instance->m_topics.end())
         {
             topicLock.unlock();
-            topic->second.AddSubscriber(std::move(subscriber));
+            topic->second.AddSubscriber(subscriber);
         }
         else
         {
             topicLock.unlock();
 
             Topic newTopic(topicTag);
-            newTopic.AddSubscriber(std::move(subscriber));
+            newTopic.AddSubscriber(subscriber);
 
             topicLock.lock();
             instance->m_topics.insert(std::make_pair(topicTag, newTopic));
@@ -92,9 +90,21 @@ namespace PubSub
         }
     }
 
-    void Broker::EnqueueMessage(std::string topicTag, const rapidjson::Document &body)
+    void Broker::Unsubscribe(ISubscriber* subscriber)
     {
-        Broker * instance = Broker::getInstance();
+        Broker* instance = Broker::getInstance();
+
+        std::unique_lock<std::mutex> topicLock(instance->m_topicMutex);
+
+        for(auto i = instance->m_topics.begin(); i != instance->m_topics.end(); i++)
+        {
+            i->second.Remove(subscriber);
+        }
+    }
+
+    void Broker::EnqueueMessage(std::string topicTag, const rapidjson::Document& body)
+    {
+        Broker* instance = Broker::getInstance();
 
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -133,7 +143,7 @@ namespace PubSub
             m_dispatchers[i].join();
     }
 
-    ThreadData::ThreadData(std::queue<std::pair<std::string, std::string>>& messageQueue,
+    ThreadData::ThreadData(message_queue& messageQueue,
                            std::mutex& queueMutex, std::unordered_map<std::string, Topic>& topics,
                            std::mutex& topicMutex, std::condition_variable& condition,
                            CancelationToken& token)

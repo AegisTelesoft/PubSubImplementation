@@ -19,11 +19,14 @@
 
 namespace PubSub
 {
+    typedef std::queue<std::pair<std::string, std::string>> message_queue;
+
     class Broker
     {
     public:
         static void EnqueueMessage(std::string topicTag, const rapidjson::Document& body);
-        static void AddSubscription(ISubscriber *subscriber, std::string topicTag);
+        static void AddSubscription(ISubscriber& subscriber, std::string topicTag);
+        static void Unsubscribe(ISubscriber* subscriber);
 
     private:
         static Broker* getInstance();
@@ -39,12 +42,12 @@ namespace PubSub
 
         //MessageQueue members
         std::mutex m_queueMutex;
-        std::queue<std::pair<std::string, std::string>> m_messageQueue;
+        message_queue m_messageQueue;
 
         //Tread pool members
         std::vector<std::thread> m_dispatchers;
-        std::condition_variable m_condition;
-        CancelationToken m_cancelationToken;
+        std::condition_variable  m_condition;
+        CancelationToken         m_cancelationToken;
     };
 }
 
