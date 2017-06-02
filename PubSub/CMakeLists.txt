@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(
     "${CMAKE_SOURCE_DIR}/rapidjson/include"
     "${CMAKE_SOURCE_DIR}/protobuf/include"
+    "${CMAKE_SOURCE_DIR}/spdlog/include"
 )
 
 link_directories(${CMAKE_SOURCE_DIR}/protobuf/lib/)
